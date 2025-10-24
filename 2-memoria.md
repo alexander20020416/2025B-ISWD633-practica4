@@ -38,5 +38,5 @@ CONTAINER ID   IMAGE       COMMAND                  CREATED         STATUS      
 Memoria RAM: 300 MB
 Memoria total (RAM + Swap): 1024 MB
 Memoria Swap disponible: 1024 - 300 = 724 MB
-Esta es la respuesta que debes completar en tu ejercicio. El contenedor puede usar hasta 724 megabytes de memoria swap cuando la RAM se agote.
+El contenedor puede usar hasta 724 megabytes de memoria swap cuando la RAM se agote.
 ```
