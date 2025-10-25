@@ -76,3 +76,287 @@ _Puedes copiar y ejecutar directamente el comando_
 ```
 docker run -d --name server-nginx --health-cmd="curl http://localhost" --health-interval=3s --health-start-period=5s --health-retries=3 --health-timeout=10s nginx:alpine
 ```
+# Documentación: Contenedor Apache con Docker y Healthcheck
+
+## 1. Dockerfile
+
+**Ubicación:** `C:\Users\ASUS TUF F15\Desktop\Epn\6\Construcción de Software\Dockerfile`
+
+```dockerfile
+FROM centos:7
+
+RUN sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-* && \
+    sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
+
+RUN yum update -y
+
+RUN yum install httpd curl -y
+
+COPY /web /var/www/html
+
+EXPOSE 80
+
+CMD ["apachectl", "-D", "FOREGROUND"]
+```
+
+### Explicación del Dockerfile
+
+- **FROM centos:7**: Utiliza CentOS 7 como sistema operativo base
+- **RUN sed...**: Configura repositorios archivados de CentOS (vault) ya que CentOS 7 llegó al final de su vida útil
+- **RUN yum update -y**: Actualiza todos los paquetes del sistema
+- **RUN yum install httpd curl -y**: Instala Apache (httpd) y curl (necesario para el healthcheck)
+- **COPY /web /var/www/html**: Copia los archivos web desde la carpeta local al directorio de Apache
+- **EXPOSE 80**: Expone el puerto 80 para tráfico HTTP
+- **CMD**: Ejecuta Apache en primer plano para mantener el contenedor activo
+
+---
+
+## 2. Construcción de la Imagen
+
+### Comando ejecutado:
+
+```bash
+docker build -t mi-apache --no-cache .
+```
+
+### Salida del comando:
+
+```
+[+] Building 46.1s (11/11) FINISHED
+ => [2/5] RUN sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*...  0.2s
+ => [3/5] RUN yum update -y                                                     29.2s
+ => [4/5] RUN yum install httpd curl -y                                         4.7s
+ => [5/5] COPY /web /var/www/html                                               0.0s
+ => exporting to image                                                          11.3s
+ => => naming to docker.io/library/mi-apache:latest
+```
+
+### Verificación de la imagen:
+
+```bash
+docker images
+```
+
+**Resultado:**
+```
+REPOSITORY   TAG      IMAGE ID       CREATED        SIZE
+mi-apache    latest   97276b04d849   19 hours ago   946MB
+```
+
+---
+
+## 3. Límites de Recursos
+
+### Pregunta 1: Límites de Memoria
+
+**¿Cuántos megabytes de memoria swap puede utilizar el contenedor creado anteriormente?**
+
+**Parámetros configurados:**
+- `--memory=300m` (Memoria RAM)
+- `--memory-swap=1g` (Memoria total: RAM + Swap)
+
+**Cálculo:**
+```
+Memoria swap máxima = memory-swap − memory
+Memoria swap = 1024m - 300m = 724m
+```
+
+**Respuesta: 724 megabytes**
+
+### Pregunta 2: Procesadores Virtuales
+
+**¿Cómo saber el número de procesadores virtuales que tiene una máquina?**
+
+**En Windows:**
+```bash
+wmic cpu get NumberOfLogicalProcessors
+```
+
+**En Linux:**
+```bash
+nproc
+```
+
+**En macOS:**
+```bash
+sysctl -n hw.ncpu
+```
+
+---
+
+## 4. Creación del Contenedor con Healthcheck
+
+### Eliminar contenedor anterior (si existe):
+
+```bash
+docker rm -f servidor-web
+```
+
+### Comando de creación:
+
+```bash
+docker run -d -p 80:80 --name servidor-web \
+  --health-cmd="curl -f http://localhost/ || exit 1" \
+  --health-interval=30s \
+  --health-start-period=40s \
+  --health-retries=3 \
+  --health-timeout=10s \
+  mi-apache
+```
+
+### Salida del comando:
+
+```
+4123b8c19c827bc1d16f9f5db08de036acaeefb734feac7ee77979fb0837b16a
+```
+
+---
+
+## 5. Configuración del Healthcheck
+
+### Parámetros utilizados:
+
+| Parámetro | Valor | Descripción |
+|-----------|-------|-------------|
+| `--health-cmd` | `"curl -f http://localhost/ \|\| exit 1"` | Verifica que Apache responda correctamente en localhost |
+| `--health-interval` | `30s` | Ejecuta la verificación cada 30 segundos |
+| `--health-timeout` | `10s` | Tiempo máximo de espera: 10 segundos |
+| `--health-retries` | `3` | Número de intentos fallidos antes de marcar como unhealthy |
+| `--health-start-period` | `40s` | Periodo de gracia de 40 segundos para que Apache inicie completamente |
+
+### Funcionamiento del Healthcheck:
+
+1. **Comando de verificación**: `curl -f http://localhost/` intenta hacer una petición HTTP a Apache
+2. **Éxito (código 0)**: El contenedor se marca como `healthy`
+3. **Fallo (código ≠ 0)**: Después de 3 intentos fallidos consecutivos, se marca como `unhealthy`
+4. **Periodo de gracia**: Durante los primeros 40 segundos, los fallos no cuentan
+
+---
+
+## 6. Verificación del Estado
+
+### Comando:
+
+```bash
+docker ps
+```
+
+### Salida:
+
+```
+CONTAINER ID   IMAGE       COMMAND                  CREATED         STATUS                   PORTS                                 NAMES
+4123b8c19c82   mi-apache   "apachectl -D FOREGR…"   9 seconds ago   Up 9 seconds (healthy)   0.0.0.0:80->80/tcp, [::]:80->80/tcp   servidor-web
+```
+
+### Estado del contenedor:
+
+- **STATUS**: `Up 9 seconds (healthy)` ✅
+- **PORTS**: `0.0.0.0:80->80/tcp` (Puerto 80 mapeado correctamente)
+- **NAMES**: `servidor-web`
+
+El estado `(healthy)` indica que el Healthcheck está funcionando correctamente y Apache responde a las peticiones.
+
+---
+
+## 7. Comandos Útiles de Monitoreo
+
+### Ver estadísticas en tiempo real:
+
+```bash
+docker stats servidor-web
+```
+
+Muestra CPU, memoria, red y uso de disco en tiempo real.
+
+### Ver logs del contenedor:
+
+```bash
+docker logs servidor-web
+```
+
+### Inspeccionar detalles del Healthcheck:
+
+```bash
+docker inspect servidor-web
+```
+
+Busca la sección `"Health"` para ver el historial de verificaciones.
+
+### Ver todos los contenedores:
+
+```bash
+docker ps -a
+```
+
+---
+
+## 8. Acceso al Servidor Web
+
+**URL:** http://localhost
+
+El servidor Apache sirve los archivos desde `/var/www/html` dentro del contenedor, que contiene los archivos copiados desde la carpeta local `web`.
+
+---
+
+## 9. Ejemplos de Comandos Healthcheck Alternativos
+
+### Para verificar un proceso específico:
+
+```bash
+--health-cmd="pgrep httpd || exit 1"
+```
+
+### Para verificar un archivo específico:
+
+```bash
+--health-cmd="test -f /var/www/html/index.html || exit 1"
+```
+
+### Para verificar un puerto específico:
+
+```bash
+--health-cmd="nc -z localhost 80 || exit 1"
+```
+
+---
+
+## 10. Importancia del Healthcheck
+
+- ✅ **Monitoreo automático**: Detecta cuando el servicio deja de funcionar
+- ✅ **Alta disponibilidad**: Permite a Docker reiniciar contenedores no saludables
+- ✅ **Visibilidad**: Proporciona información en tiempo real del estado del servicio
+- ✅ **Prevención**: Evita que contenedores "zombies" permanezcan activos sin servir tráfico
+- ✅ **Orquestación**: Herramientas como Docker Swarm y Kubernetes usan healthchecks para gestionar servicios
+
+---
+
+## 11. Resumen de Archivos
+
+### Estructura del proyecto:
+
+```
+C:\Users\ASUS TUF F15\Desktop\Epn\6\Construcción de Software\
+├── Dockerfile
+└── web\
+    └── index.html
+```
+
+### Imagen creada:
+
+- **Nombre**: `mi-apache:latest`
+- **Tamaño**: 946MB
+- **ID**: `97276b04d849`
+
+### Contenedor en ejecución:
+
+- **Nombre**: `servidor-web`
+- **ID**: `4123b8c19c82`
+- **Estado**: `healthy`
+- **Puerto**: `80:80`
+
+---
+
+## Autor
+
+**Proyecto**: Construcción de Software - Contenedores Docker  
+**Fecha**: Octubre 2025
