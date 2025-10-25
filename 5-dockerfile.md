@@ -57,13 +57,102 @@ No olvides verificar en qué directorio se encuentra el archivo Dockerfile
 ```
 
 **¿Cuántos pasos se han ejecutado?**
-# RESPONDER 
+```
+En este Dockerfile hay 5 pasos principales de construcción:
 
+FROM centos:7 - Descargar imagen base
+RUN sed... - Configurar repositorios
+RUN yum update -y - Actualizar sistema
+RUN yum install httpd -y - Instalar Apache
+COPY /web /var/www/html - Copiar archivos
+```
 ### Inspeccionar la imagen creada
-# COMPLETAR CON UNA CAPTURA
 
+```
+C:\Users\ASUS TUF F15\Desktop\Epn\6\Construcción de Software>docker inspect mi-apache
+[
+    {
+        "Id": "sha256:cf43c66a0aad325497b53ba71be5ebcfb31697842e2edcb29354371f288d1d8d",
+        "RepoTags": [
+            "mi-apache:latest"
+        ],
+        "RepoDigests": [
+            "mi-apache@sha256:cf43c66a0aad325497b53ba71be5ebcfb31697842e2edcb29354371f288d1d8d"
+        ],
+        "Parent": "",
+        "Comment": "buildkit.dockerfile.v0",
+        "Created": "2025-10-25T02:55:01.699021658Z",
+        "DockerVersion": "",
+        "Author": "",
+        "Architecture": "amd64",
+        "Os": "linux",
+        "Size": 252325657,
+        "GraphDriver": {
+            "Data": null,
+            "Name": "overlayfs"
+        },
+        "RootFS": {
+            "Type": "layers",
+            "Layers": [
+                "sha256:174f5685490326fc0a1c0f5570b8663732189b327007e47ff13d2ca59673db02",
+                "sha256:ad2602f10989c286860c0a308d94d1e88404bcf50bdd27cfcfa93844d889c4eb",
+                "sha256:87aaa092282336d0b9209b0154522dbc38d0af844b97bd2c3023e648dcc2dbef",
+                "sha256:eaa015a81b55abbe640948ded22b54babcf702e48234135a61b6fc224905847c",
+                "sha256:35a54bf2b4d121cb7a02df1a53411ef5baf8aca82258a639f10d72693fe0c84f"
+            ]
+        },
+        "Metadata": {
+            "LastTagTime": "2025-10-25T02:55:10.223473279Z"
+        },
+        "Descriptor": {
+            "mediaType": "application/vnd.oci.image.index.v1+json",
+            "digest": "sha256:cf43c66a0aad325497b53ba71be5ebcfb31697842e2edcb29354371f288d1d8d",
+            "size": 856
+        },
+        "Config": {
+            "ArgsEscaped": true,
+            "Cmd": [
+                "apachectl",
+                "-D",
+                "FOREGROUND"
+            ],
+            "Entrypoint": null,
+            "Env": [
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+            ],
+            "ExposedPorts": {
+                "80/tcp": {}
+            },
+            "Labels": {
+                "org.label-schema.build-date": "20201113",
+                "org.label-schema.license": "GPLv2",
+                "org.label-schema.name": "CentOS Base Image",
+                "org.label-schema.schema-version": "1.0",
+                "org.label-schema.vendor": "CentOS",
+                "org.opencontainers.image.created": "2020-11-13 00:00:00+00:00",
+                "org.opencontainers.image.licenses": "GPL-2.0-only",
+                "org.opencontainers.image.title": "CentOS Base Image",
+                "org.opencontainers.image.vendor": "CentOS"
+            },
+            "OnBuild": null,
+            "User": "",
+            "Volumes": null,
+            "WorkingDir": ""
+        }
+    }
+]
+```
 **Modificar el archivo index.html para incluir su nombre y luego crear una nueva versión de la imagen anterior**
 **¿Cuántos pasos se han ejecutado? ¿Observa algo diferente en la creación de la imagen**
+```
+5 pasos principalesPuedes 
+
+[1/5] FROM docker.io/library/centos:7 - Imagen base
+[2/5] RUN sed -i... - Configurar repositorios
+[3/5] RUN yum update -y - Actualizar sistema
+[4/5] RUN yum install httpd -y - Instalar Apache
+[5/5] COPY /web /var/www/html - Copiar archivos
+```
 
 ## Mecanismo de caché
 Docker usa un mecanismo de caché cuando crea imágenes para acelerar el proceso de construcción y evitar la repetición de pasos que no han cambiado. Cada instrucción en un Dockerfile crea una capa en la imagen final. Docker intenta reutilizar las capas de una construcción anterior si no han cambiado, lo que reduce significativamente el tiempo de construcción.
@@ -79,11 +168,20 @@ Docker usa un mecanismo de caché cuando crea imágenes para acelerar el proceso
 ```
 
 ### ¿Con que puerto host se está realizando el mapeo?
-# COMPLETAR CON LA RESPUESTA
 
+```
+C:\Users\ASUS TUF F15\Desktop\Epn\6\Construcción de Software>docker run -d -P --name servidor-apache myapache:2.0
+59aff586af203efd837cb3623deae10d9086c6866e3d9bf025dda60a970f18ad
+
+C:\Users\ASUS TUF F15\Desktop\Epn\6\Construcción de Software>docker ps
+CONTAINER ID   IMAGE          COMMAND                  CREATED          STATUS                    PORTS                                 NAMES
+59aff586af20   myapache:2.0   "apachectl -D FOREGR…"   7 seconds ago    Up 6 seconds              0.0.0.0:32768->80/tcp                 servidor-apache
+4123b8c19c82   mi-apache      "apachectl -D FOREGR…"   19 minutes ago   Up 19 minutes (healthy)   0.0.0.0:80->80/tcp, [::]:80->80/tcp   servidor-web
+```
 **¿Qué es una imagen huérfana?**
-# COMPLETAR CON LA RESPUESTA
-
+```
+Una imagen huérfana (dangling image) es una imagen de Docker que no tiene nombre ni etiqueta (aparece como <none>:<none>) y que no está siendo utilizada por ningún contenedor.
+```
 ### Identificar imágenes huérfanas
 ```
 docker images -f "dangling=true"
@@ -93,13 +191,19 @@ docker images -f "dangling=true"
 ```
 docker images -f "dangling=true" -q
 ```
+```
+C:\Users\ASUS TUF F15\Desktop\Epn\6\Construcción de Software>docker images -f "dangling=true" -q
+```
 
 ### Eliminar imágenes huérfanas
 Este comando eliminará todas las imágenes que no estén asociadas a ningún contenedor en ejecución. Antes de ejecutarlo, asegúrate de revisar las imágenes que serán eliminadas para evitar la pérdida de imágenes importantes. 
 ```
 docker image prune
 ```
-
+```
+C:\Users\ASUS TUF F15\Desktop\Epn\6\Construcción de Software>docker image prune -f
+Total reclaimed space: 0B
+```
 ### Para Ejecutar un archivo Dockerfile que tiene otro nombre
 ```
 docker build -t <nombre imagen>:<tag> -f <ruta y nombre del Dockerfile> .
